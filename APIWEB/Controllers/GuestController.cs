@@ -1,16 +1,16 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using WebApplication9.Models2;
+using APIWEB.Models;
 
-namespace WebApplication9.Controllers
+namespace APIWEB.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
     public class GuestController : ControllerBase
     {
-        private readonly DBContextTest2 _context;
+        private readonly DBContextTest _context;
 
-        public GuestController(DBContextTest2 context)
+        public GuestController(DBContextTest context)
         {
             _context = context;
         }

@@ -2,14 +2,14 @@
 using Microsoft.EntityFrameworkCore;
 using APIWEB.Models;
 
-namespace APIWEB.Controllers;
+namespace APIWEB.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
-        private readonly DBContextTest2 _context;
-        public AuthController(DBContextTest2 context)
+        private readonly DBContextTest _context;
+        public AuthController(DBContextTest context)
         {
             _context = context;
         }

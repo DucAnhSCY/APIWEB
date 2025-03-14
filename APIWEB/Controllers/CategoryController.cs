@@ -4,16 +4,16 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.Extensions.Logging;
 using APIWEB.Models;
 
-namespace APIWEB.Controllers;
+namespace APIWEB.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
     public class CategoryController : ControllerBase
     {
-        private readonly DBContextTest2 _context;
+        private readonly DBContextTest _context;
         private readonly ILogger<CategoryController> _logger;
 
-        public CategoryController(DBContextTest2 context, ILogger<CategoryController> logger)
+        public CategoryController(DBContextTest context, ILogger<CategoryController> logger)
         {
             _context = context;
             _logger = logger;

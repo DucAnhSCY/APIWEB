@@ -1,10 +1,11 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using WebApplication9.Models2;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
-namespace WebApplication9.Controllers
+using APIWEB.Models;
+
+namespace APIWEB.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
@@ -87,7 +88,7 @@ namespace WebApplication9.Controllers
                 return BadRequest(new { message = "Thread phải có một người tạo (RegisteredUser)." });
             }
 
-            var thread = new Models2.Thread
+            var thread = new Models.Thread
             {
                 Title = threadCreateDTO.Title,
                 Content = threadCreateDTO.Content,

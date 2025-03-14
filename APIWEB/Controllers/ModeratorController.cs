@@ -1,17 +1,17 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Client;
-using WebApplication9.Models2;
+using APIWEB.Models;
 
-namespace WebApplication9.Controllers
+namespace APIWEB.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
     public class ModeratorController : ControllerBase
     {
-        private readonly DBContextTest2 _dbContext;
+        private readonly DBContextTest _dbContext;
 
-        public ModeratorController(DBContextTest2 dbContext)
+        public ModeratorController(DBContextTest dbContext)
         {
             _dbContext = dbContext;
         }

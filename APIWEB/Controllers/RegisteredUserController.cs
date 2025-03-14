@@ -1,16 +1,16 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using WebApplication9.Models2;
+using APIWEB.Models;
 
-namespace WebApplication9.Controllers
+namespace APIWEB.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
     public class RegisteredUserController : ControllerBase
     {
-        private readonly DBContextTest2 _context;
+        private readonly DBContextTest _context;
 
-        public RegisteredUserController(DBContextTest2 context)
+        public RegisteredUserController(DBContextTest context)
         {
             _context = context;
         }

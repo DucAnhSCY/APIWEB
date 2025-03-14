@@ -2,15 +2,15 @@
 using Microsoft.EntityFrameworkCore;
 using APIWEB.Models;
 
-namespace APIWEB.Controllers;
+namespace APIWEB.Controllers
 {
     [ApiController]
     [Route("[controller]")]
     public class AdminController : ControllerBase
     {
-        private readonly DBContextTest2 _db;
+        private readonly DBContextTest _db;
 
-        public AdminController(DBContextTest2 db)
+        public AdminController(DBContextTest db)
         {
             _db = db;
         }
