@@ -46,12 +46,7 @@ namespace APIWEB.Controllers
                 return BadRequest(ModelState);
             }
 
-            if (_context.Admins.Any(a => a.Email == user.Email || a.Username == user.Username))
-            {
-                return BadRequest(new { message = "Email or Username already existed. Try again!" });
-            }
-
-            if (_context.RegisteredUsers.Any(u => u.Email == user.Email || u.Username == user.Username))
+            if ((_context.Admins.Any(a => a.Email == user.Email || a.Username == user.Username))|| (_context.RegisteredUsers.Any(u => u.Email == user.Email || u.Username == user.Username)))
             {
                 return BadRequest(new { message = "Email or Username already existed. Try again!" });
             }
