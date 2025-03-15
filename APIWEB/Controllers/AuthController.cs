@@ -21,7 +21,7 @@ namespace APIWEB.Controllers
 
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password) || string.IsNullOrEmpty(email))
                 return BadRequest("Thông tin không được để trống.");
-            if ((await _context.RegisteredUsers.AnyAsync(u => u.Username == username || u.Email == email)|| (await _context.Admins.AnyAsync(u => u.Username == username || u.Email == email)))
+            if (await _context.RegisteredUsers.AnyAsync(u => u.Username == username || u.Email == email) || await _context.Admins.AnyAsync(u => u.Username == username || u.Email == email))
                 return BadRequest("Tên đăng nhập hoặc email đã tồn tại.");
 
             var user = new RegisteredUser

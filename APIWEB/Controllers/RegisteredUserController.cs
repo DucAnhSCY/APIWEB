@@ -46,9 +46,14 @@ namespace APIWEB.Controllers
                 return BadRequest(ModelState);
             }
 
+            if (_context.Admins.Any(a => a.Email == user.Email || a.Username == user.Username))
+            {
+                return BadRequest(new { message = "Email or Username already existed. Try again!" });
+            }
+
             if (_context.RegisteredUsers.Any(u => u.Email == user.Email || u.Username == user.Username))
             {
-                return BadRequest(new { message = "Email or Username already existed." });
+                return BadRequest(new { message = "Email or Username already existed. Try again!" });
             }
 
             user.Status = user.Status ?? "Active";
@@ -104,6 +109,21 @@ namespace APIWEB.Controllers
                 return BadRequest("Invalid login request.");
             }
 
+            var admin = _context.Admins
+                .FirstOrDefault(a => a.Email == loginRequest.Email && a.Password == loginRequest.Password);
+
+            if (admin != null)
+            {
+                return Ok(new
+                {
+                    message = "Login successful!",
+                    isAuthenticated = true,
+                    userId = admin.AdminId,
+                    username = admin.Username,
+                    role = "Admin"
+                });
+            }
+
             var user = _context.RegisteredUsers
                 .FirstOrDefault(u => u.Email == loginRequest.Email && u.Password == loginRequest.Password);
 
@@ -116,8 +136,9 @@ namespace APIWEB.Controllers
             {
                 message = "Login successful!",
                 isAuthenticated = true,
-                userId = user.RegUserId,  // Add this line
-                username = user.Username
+                userId = user.RegUserId,
+                username = user.Username,
+                role = "RegisteredUser"
             });
         }
     }

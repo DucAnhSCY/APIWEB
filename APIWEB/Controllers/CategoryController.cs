@@ -116,19 +116,19 @@ namespace APIWEB.Controllers
         public class CategoryDTO
         {
             public int CategoryId { get; set; }
-            public string Name { get; set; }
+            public required string Name { get; set; }
         }
 
         public class CreateCategoryDTO
         {
             [Required(ErrorMessage = "Tên Category không được để trống.")]
-            public string Name { get; set; }
+            public required string Name { get; set; }
         }
 
         public class UpdateCategoryDTO
         {
             [Required(ErrorMessage = "Tên Category không được để trống.")]
-            public string Name { get; set; }
+            public required string Name { get; set; }
         }
     }
 }
