@@ -18,10 +18,9 @@ namespace APIWEB.Controllers
         [HttpPost("Register")]
         public async Task<IActionResult> Register(string username, string password, string email)
         {
-
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password) || string.IsNullOrEmpty(email))
                 return BadRequest("Thông tin không được để trống.");
-            if (await _context.Admins.AnyAsync(u => u.Username == username || u.Email == email) || await _context.RegisteredUsers.AnyAsync(u => u.Username == username || u.Email == email))
+            if (await _context.RegisteredUsers.AnyAsync(u => u.Username == username || u.Email == email))
                 return BadRequest("Tên đăng nhập hoặc email đã tồn tại.");
 
             var user = new RegisteredUser
@@ -36,26 +35,26 @@ namespace APIWEB.Controllers
             await _context.SaveChangesAsync();
             return Ok(new { message = "Đăng ký thành công", user });
         }
+
         // Đăng nhập
         [HttpPost("Login")]
         public async Task<IActionResult> Login(string username, string password)
         {
-            var user1 = await _context.Admins.FirstOrDefaultAsync(u => u.Username == username && u.Password == password);
-            if(user1 == null )
-            {
-                var user = await _context.RegisteredUsers.FirstOrDefaultAsync(u => u.Username == username && u.Password == password);
-                if (user == null)
-                    return BadRequest("Tên đăng nhập hoặc mật khẩu không đúng.");
-                return Ok(new { message = "Đăng nhập thành công", user });
-            }
-            else if(user1 != null)
-            {
-                return Ok(new { message = "Đăng nhập thành công", user1 });
-            }
-            else
-            {
+            var user = await _context.RegisteredUsers.FirstOrDefaultAsync(u => u.Username == username && u.Password == password);
+            if (user == null)
                 return BadRequest("Tên đăng nhập hoặc mật khẩu không đúng.");
-            }
+            return Ok(new { message = "Đăng nhập thành công", user });
+        }
+
+        // Đăng nhập Admin
+        [HttpPost("AdminLogin")]
+        public async Task<IActionResult> AdminLogin(string adminEmail, string adminPassword)
+        {
+            // Kiểm tra xem admin có tồn tại không
+            var admin = await _context.Admins.FirstOrDefaultAsync(a => a.Email == adminEmail && a.Password == adminPassword);
+            if (admin == null)
+                return Unauthorized(new { message = "Email hoặc mật khẩu không đúng." });
+            return Ok(new { message = "Đăng nhập thành công", admin });
         }
     }
 }

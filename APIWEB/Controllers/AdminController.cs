@@ -71,5 +71,38 @@ namespace APIWEB.Controllers
             _db.SaveChanges();
             return Ok(admin);
         }
+
+        // 🔹 Đăng nhập Admin
+        [HttpPost("Login")]
+        public IActionResult AdminLogin([FromBody] AdminLoginRequest loginRequest)
+        {
+            if (loginRequest == null || !ModelState.IsValid)
+            {
+                return BadRequest("Invalid login request.");
+            }
+
+            var admin = _db.Admins
+                .FirstOrDefault(a => a.Email == loginRequest.AdminEmail && a.Password == loginRequest.AdminPassword);
+
+            if (admin == null)
+            {
+                return Unauthorized(new { message = "Invalid email or password." });
+            }
+
+            return Ok(new
+            {
+                message = "Login successful!",
+                isAuthenticated = true,
+                userId = admin.AdminId,
+                username = admin.Username,
+                role = "Admin"
+            });
+        }
+    }
+
+    public class AdminLoginRequest
+    {
+        public string AdminEmail { get; set; }
+        public string AdminPassword { get; set; }
     }
 }
