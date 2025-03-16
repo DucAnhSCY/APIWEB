@@ -46,6 +46,29 @@ namespace APIWEB.Controllers
             return Ok(category);
         }
 
+        // Tìm kiếm Category theo tên
+        [HttpGet("Search")]
+        public async Task<IActionResult> SearchByName([FromQuery] string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return BadRequest(new { message = "Tên tìm kiếm không được để trống." });
+            }
+
+            var categories = await _context.Categories
+                .Where(c => c.Name.Contains(name))
+                .Select(c => new CategoryDTO { CategoryId = c.CategoryId, Name = c.Name })
+                .ToListAsync();
+
+            if (categories.Count == 0)
+            {
+                _logger.LogInformation("No categories found matching name: {Name}", name);
+                return Ok(new { message = "Không tìm thấy danh mục nào phù hợp.", categories });
+            }
+
+            return Ok(new { message = $"Tìm thấy {categories.Count} danh mục phù hợp.", categories });
+        }
+
         // Thêm Category mới
         [HttpPost("Insert")]
         public async Task<IActionResult> Insert([FromBody] CreateCategoryDTO createCategoryDTO)

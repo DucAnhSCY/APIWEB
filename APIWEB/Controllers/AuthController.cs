@@ -36,15 +36,7 @@ namespace APIWEB.Controllers
             return Ok(new { message = "Đăng ký thành công", user });
         }
 
-        // Đăng nhập
-        [HttpPost("Login")]
-        public async Task<IActionResult> Login(string username, string password)
-        {
-            var user = await _context.RegisteredUsers.FirstOrDefaultAsync(u => u.Username == username && u.Password == password);
-            if (user == null)
-                return BadRequest("Tên đăng nhập hoặc mật khẩu không đúng.");
-            return Ok(new { message = "Đăng nhập thành công", user });
-        }
+
 
         // Đăng nhập Admin
         [HttpPost("AdminLogin")]
@@ -55,6 +47,44 @@ namespace APIWEB.Controllers
             if (admin == null)
                 return Unauthorized(new { message = "Email hoặc mật khẩu không đúng." });
             return Ok(new { message = "Đăng nhập thành công", admin });
+        }
+
+        // Đăng nhập Moderator
+        [HttpPost("ModeratorLogin")]
+        public async Task<IActionResult> ModeratorLogin(string moderatorEmail, string moderatorPassword)
+        {
+            // Kiểm tra xem moderator có tồn tại không
+            var moderator = await _context.Moderators.FirstOrDefaultAsync(m =>
+                m.Email == moderatorEmail && m.Password == moderatorPassword);
+
+            if (moderator == null)
+                return Unauthorized(new { message = "Email hoặc mật khẩu không đúng." });
+
+            if (moderator.Status != "Active")
+                return Unauthorized(new { message = "Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên." });
+
+            // Trả về thông tin moderator (không bao gồm mật khẩu)
+            var moderatorResponse = new
+            {
+                moderator.ModId,
+                moderator.Username,
+                moderator.Email,
+                moderator.Status,
+                moderator.JoinDate,
+                Role = "Moderator"
+            };
+
+            return Ok(new { message = "Đăng nhập thành công", moderator = moderatorResponse });
+        }
+
+        // Đăng nhập
+        [HttpPost("Login")]
+        public async Task<IActionResult> Login(string username, string password)
+        {
+            var user = await _context.RegisteredUsers.FirstOrDefaultAsync(u => u.Username == username && u.Password == password);
+            if (user == null)
+                return BadRequest("Tên đăng nhập hoặc mật khẩu không đúng.");
+            return Ok(new { message = "Đăng nhập thành công", user });
         }
     }
 }

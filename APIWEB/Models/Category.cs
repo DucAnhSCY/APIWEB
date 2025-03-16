@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 
 namespace APIWEB.Models;
@@ -12,6 +13,10 @@ public partial class Category
     [Key]
     [Column("category_ID")]
     public int CategoryId { get; set; }
+
+    [NotMapped]
+    [JsonIgnore]
+    public object? CategoryID { get; internal set; }
 
     [Column("name")]
     [StringLength(100)]

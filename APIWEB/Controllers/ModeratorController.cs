@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Identity.Client;
 using APIWEB.Models;
+using System.Text.Json.Serialization;
 
 namespace APIWEB.Controllers
 {
@@ -9,91 +9,78 @@ namespace APIWEB.Controllers
     [Route("api/[controller]")]
     public class ModeratorController : ControllerBase
     {
-        private readonly DBContextTest _dbContext;
+        private readonly DBContextTest _context;
+        private readonly ILogger<ModeratorController> _logger;
 
-        public ModeratorController(DBContextTest dbContext)
+        public ModeratorController(DBContextTest context, ILogger<ModeratorController> logger)
         {
-            _dbContext = dbContext;
+            _context = context;
+            _logger = logger;
         }
 
-        [HttpGet]
-        public async Task<IActionResult> GetAll()
+        [HttpPost("Login")]
+        public async Task<IActionResult> Login([FromBody] ModeratorLoginRequest loginRequest)
         {
-            var moderators = await _dbContext.Moderators.ToListAsync();
-            return Ok(moderators);
-        }
+            try
+            {
+                _logger.LogInformation($"Moderator login attempt with email: {loginRequest?.ModeratorEmail}");
 
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetById(int id)
-        {
-            var moderator = await _dbContext.Moderators.FindAsync(id);
-            if (moderator == null)
-            {
-                return NotFound(new { message = "Không tìm thấy người quản trị." });
-            }
-            return Ok(moderator);
-        }
+                if (loginRequest == null || !ModelState.IsValid)
+                {
+                    _logger.LogWarning("Login failed: Invalid login request");
+                    return BadRequest(new { message = "Email và mật khẩu không được để trống." });
+                }
 
-        [HttpPost("Insert")]
-        public async Task<IActionResult> Insert(string username , string email , string password , string status)
-        {
-            if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
-            {
-                return BadRequest(new { message = "Thông tin không được để trống." });
-            }
-            if (await _dbContext.Moderators.AnyAsync(m => m.Username == username || m.Email == email))
-            {
-                return BadRequest(new { message = "Tên đăng nhập hoặc email đã tồn tại." });
-            }
-            var moderator = new Moderator
-            {
-                Username = username,
-                Email = email,
-                Password = password,
-                Status = status ?? "Active",
-                JoinDate = DateTime.Now
-            };
-            _dbContext.Moderators.Add(moderator);
-            await _dbContext.SaveChangesAsync();
-            return Ok(new { message = "Thêm thành công quản trị viên", moderator });
-        }
+                var moderator = await _context.Moderators
+                    .FirstOrDefaultAsync(m => m.Email == loginRequest.ModeratorEmail);
 
-        [HttpPut("Update/{id}")]
-        public async Task<IActionResult> Update(int id, [FromBody] Moderator updateModerator)
-        {
-            var moderator = await _dbContext.Moderators.FindAsync(id);
-            if (moderator == null)
-            {
-                return NotFound(new { message = "Không tìm thấy người quản trị." });
-            }
-            if (string.IsNullOrEmpty(updateModerator.Username) || string.IsNullOrEmpty(updateModerator.Email) || string.IsNullOrEmpty(updateModerator.Password))
-            {
-                return BadRequest(new { message = "Thông tin không được để trống." });
-            }
-            if (await _dbContext.Moderators.AnyAsync(m => (m.Username == updateModerator.Username || m.Email == updateModerator.Email) && m.ModId != id))
-            {
-                return BadRequest(new { message = "Tên đăng nhập hoặc email đã tồn tại." });
-            }
-            moderator.Username = updateModerator.Username;
-            moderator.Email = updateModerator.Email;
-            moderator.Password = updateModerator.Password;
-            moderator.Status = updateModerator.Status;
-            _dbContext.Moderators.Update(moderator);
-            await _dbContext.SaveChangesAsync();
-            return Ok(new { message = "Cập nhật thông tin người quản trị thành công.", moderator });
-        }
+                if (moderator == null)
+                {
+                    _logger.LogWarning($"Login failed: Email not found: {loginRequest.ModeratorEmail}");
+                    return Unauthorized(new { message = "Email không tồn tại." });
+                }
 
-        [HttpDelete("Delete/{id}")]
-        public async Task<IActionResult> Delete(int id)
-        {
-            var moderator = await _dbContext.Moderators.FindAsync(id);
-            if (moderator == null)
-            {
-                return NotFound(new { message = "Không tìm thấy người quản trị." });
+                if (moderator.Password != loginRequest.ModeratorPassword)
+                {
+                    _logger.LogWarning($"Login failed: Incorrect password for {loginRequest.ModeratorEmail}");
+                    return Unauthorized(new { message = "Mật khẩu không chính xác." });
+                }
+
+                if (moderator.Status != "Active")
+                {
+                    _logger.LogWarning($"Login failed: Account disabled for {loginRequest.ModeratorEmail}");
+                    return Unauthorized(new { message = "Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên." });
+                }
+
+                _logger.LogInformation($"Moderator login successful: {moderator.Username} (ID: {moderator.ModId})");
+
+                // Loại bỏ mật khẩu trước khi trả về thông tin
+                return Ok(new
+                {
+                    message = "Đăng nhập thành công!",
+                    isAuthenticated = true,
+                    userId = moderator.ModId,
+                    username = moderator.Username,
+                    email = moderator.Email,
+                    status = moderator.Status,
+                    joinDate = moderator.JoinDate,
+                    role = "Moderator"
+                });
             }
-            _dbContext.Moderators.Remove(moderator);
-            await _dbContext.SaveChangesAsync();
-            return Ok(new { message = "Xóa người quản trị thành công." });
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in moderator login");
+                return StatusCode(500, new { message = "Server error: " + ex.Message });
+            }
         }
+    }
+
+    public class ModeratorLoginRequest
+    {
+        [JsonPropertyName("moderatorEmail")]
+        public string ModeratorEmail { get; set; } = string.Empty;
+
+        [JsonPropertyName("moderatorPassword")]
+        public string ModeratorPassword { get; set; } = string.Empty;
     }
 }

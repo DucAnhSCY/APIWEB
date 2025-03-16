@@ -1,24 +1,28 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using APIWEB.Models;
+using System.Text.Json.Serialization;
 
 namespace APIWEB.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/[controller]")]
     public class AdminController : ControllerBase
     {
         private readonly DBContextTest _db;
+        private readonly ILogger<AdminController> _logger;
 
-        public AdminController(DBContextTest db)
+        public AdminController(DBContextTest db, ILogger<AdminController> logger)
         {
             _db = db;
+            _logger = logger;
         }
 
         // 🔹 Lấy danh sách Admin
         [HttpGet("GetList")]
         public IActionResult GetList()
         {
+            _logger.LogInformation("Getting admin list");
             return Ok(_db.Admins.ToList());
         }
 
@@ -26,6 +30,7 @@ namespace APIWEB.Controllers
         [HttpGet("GetById/{id}")]
         public IActionResult GetById(int id)
         {
+            _logger.LogInformation($"Getting admin by ID: {id}");
             var admin = _db.Admins.Find(id);
             if (admin == null)
                 return NotFound("Không tìm thấy Admin.");
@@ -35,17 +40,19 @@ namespace APIWEB.Controllers
 
         // 🔹 Thêm Admin
         [HttpPost("Insert")]
-        public IActionResult Insert(string username, string email, string password, string status)
+        public IActionResult Insert(string adminUsername, string adminEmail, string adminPassword, string adminStatus)
         {
-            if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
+            _logger.LogInformation($"Inserting new admin: {adminUsername}, {adminEmail}");
+
+            if (string.IsNullOrEmpty(adminUsername) || string.IsNullOrEmpty(adminEmail) || string.IsNullOrEmpty(adminPassword))
                 return BadRequest("Thông tin không được để trống.");
 
             var admin = new Admin
             {
-                Username = username,
-                Email = email,
-                Password = password, // TODO: Mã hóa mật khẩu trước khi lưu
-                Status = status ?? "Active",
+                Username = adminUsername,
+                Email = adminEmail,
+                Password = adminPassword, // TODO: Mã hóa mật khẩu trước khi lưu
+                Status = adminStatus ?? "Active",
                 JoinDate = DateTime.Now
             };
 
@@ -57,16 +64,18 @@ namespace APIWEB.Controllers
 
         // 🔹 Cập nhật Admin
         [HttpPut("Update/{id}")]
-        public IActionResult Update(int id, string username, string email, string password, string status)
+        public IActionResult Update(int id, string adminUsername, string adminEmail, string adminPassword, string adminStatus)
         {
+            _logger.LogInformation($"Updating admin ID: {id}");
+
             var admin = _db.Admins.Find(id);
             if (admin == null)
                 return NotFound("Không tìm thấy Admin.");
 
-            admin.Username = username;
-            admin.Email = email;
-            admin.Password = password; // TODO: Cân nhắc mã hóa mật khẩu
-            admin.Status = status;
+            admin.Username = adminUsername;
+            admin.Email = adminEmail;
+            admin.Password = adminPassword; // TODO: Cân nhắc mã hóa mật khẩu
+            admin.Status = adminStatus;
 
             _db.SaveChanges();
             return Ok(admin);
@@ -74,35 +83,68 @@ namespace APIWEB.Controllers
 
         // 🔹 Đăng nhập Admin
         [HttpPost("Login")]
-        public IActionResult AdminLogin([FromBody] AdminLoginRequest loginRequest)
+        public IActionResult Login([FromBody] AdminLoginRequest loginRequest)
         {
-            if (loginRequest == null || !ModelState.IsValid)
+            try
             {
-                return BadRequest("Invalid login request.");
+                _logger.LogInformation($"Admin login attempt with email: {loginRequest?.AdminEmail}");
+
+                if (loginRequest == null)
+                {
+                    _logger.LogWarning("Admin login failed: request is null");
+                    return BadRequest(new { message = "Invalid login request - request is null." });
+                }
+
+                // Kiểm tra xem có dữ liệu đầu vào không
+                if (string.IsNullOrEmpty(loginRequest.AdminEmail) || string.IsNullOrEmpty(loginRequest.AdminPassword))
+                {
+                    _logger.LogWarning("Admin login failed: email or password is empty");
+                    return BadRequest(new { message = "Email and password are required." });
+                }
+
+                // Tìm admin trong database
+                var admin = _db.Admins
+                    .FirstOrDefault(a => a.Email == loginRequest.AdminEmail);
+
+                if (admin == null)
+                {
+                    _logger.LogWarning($"Admin login failed: no admin found with email {loginRequest.AdminEmail}");
+                    return Unauthorized(new { message = "Invalid email or password." });
+                }
+
+                // Kiểm tra mật khẩu
+                if (admin.Password != loginRequest.AdminPassword)
+                {
+                    _logger.LogWarning($"Admin login failed: incorrect password for {loginRequest.AdminEmail}");
+                    return Unauthorized(new { message = "Invalid email or password." });
+                }
+
+                _logger.LogInformation($"Admin login successful: {admin.Username} (ID: {admin.AdminId})");
+
+                return Ok(new
+                {
+                    message = "Login successful!",
+                    isAuthenticated = true,
+                    userId = admin.AdminId,
+                    username = admin.Username,
+                    email = admin.Email,
+                    role = "Admin"
+                });
             }
-
-            var admin = _db.Admins
-                .FirstOrDefault(a => a.Email == loginRequest.AdminEmail && a.Password == loginRequest.AdminPassword);
-
-            if (admin == null)
+            catch (Exception ex)
             {
-                return Unauthorized(new { message = "Invalid email or password." });
+                _logger.LogError(ex, "Error in admin login");
+                return StatusCode(500, new { message = "Server error: " + ex.Message });
             }
-
-            return Ok(new
-            {
-                message = "Login successful!",
-                isAuthenticated = true,
-                userId = admin.AdminId,
-                username = admin.Username,
-                role = "Admin"
-            });
         }
     }
 
     public class AdminLoginRequest
     {
-        public string AdminEmail { get; set; }
-        public string AdminPassword { get; set; }
+        [JsonPropertyName("adminEmail")]
+        public string AdminEmail { get; set; } = string.Empty;
+
+        [JsonPropertyName("adminPassword")]
+        public string AdminPassword { get; set; } = string.Empty;
     }
 }

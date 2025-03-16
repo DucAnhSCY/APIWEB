@@ -1,47 +1,66 @@
 ﻿using APIWEB.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
+// Cấu hình CORS đơn giản hơn và cho phép tất cả các nguồn
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowFrontendApp", // T�n c?a CORS policy (b?n c� th? ??t t�n kh�c)
+    options.AddPolicy("AllowAll",
         policy =>
         {
-            policy.WithOrigins("http://127.0.0.1:5500", "http://localhost:5500", "http://127.0.0.1:5504", "http://localhost:5504") // **Quan tr?ng:** Thay th? b?ng ngu?n g?c (origin) frontend c?a b?n. N?u b?n d�ng Live Server VS Code, ?�y th??ng l� c�c gi� tr? n�y.
-                   .AllowAnyMethod() // Cho ph�p t?t c? c�c HTTP methods (GET, POST, PUT, DELETE...) - **Ch? d�ng cho ph�t tri?n**.
-                   .AllowAnyHeader(); // Cho ph�p t?t c? c�c HTTP headers - **Ch? d�ng cho ph�t tri?n**.
+            policy.AllowAnyOrigin()
+                  .AllowAnyMethod()
+                  .AllowAnyHeader();
         });
 });
-builder.Services.AddControllers();
+
+// Cấu hình JSON serializer để xử lý tốt hơn các thuộc tính
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+    });
+
 builder.Services.AddDbContext<DBContextTest>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DBContextTest")));
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-
-
 var app = builder.Build();
-
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+
+    // Thêm middleware để log các request trong môi trường development
+    app.Use(async (context, next) =>
+    {
+        Console.WriteLine($"Request: {context.Request.Method} {context.Request.Path}");
+        await next.Invoke();
+    });
 }
 
-app.UseRouting();
+// Đặt CORS trước các middleware khác
+app.UseCors("AllowAll");
 
-app.UseCors("AllowFrontendApp");
+app.UseRouting();
 
 app.UseHttpsRedirection();
 
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Log khi ứng dụng khởi động
+Console.WriteLine("Application started. Press Ctrl+C to shut down.");
 
 app.Run();
