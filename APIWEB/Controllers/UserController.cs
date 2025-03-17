@@ -8,12 +8,12 @@ namespace APIWEB.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class RegisteredUserController : ControllerBase
+    public class UserController : ControllerBase
     {
         private readonly DBContextTest _context;
-        private readonly ILogger<RegisteredUserController> _logger;
+        private readonly ILogger<UserController> _logger;
 
-        public RegisteredUserController(DBContextTest context, ILogger<RegisteredUserController> logger)
+        public UserController(DBContextTest context, ILogger<UserController> logger)
         {
             _context = context;
             _logger = logger;
@@ -21,7 +21,7 @@ namespace APIWEB.Controllers
 
         // 🔹 Lấy danh sách người dùng (với phân trang)
         [HttpGet]
-        public async Task<IActionResult> GetAll([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetAll([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? role = null)
         {
             try
             {
@@ -29,24 +29,33 @@ namespace APIWEB.Controllers
                 if (page < 1) page = 1;
                 if (pageSize < 1 || pageSize > 50) pageSize = 10;
 
-                _logger.LogInformation($"Getting registered users page {page} with page size {pageSize}");
+                _logger.LogInformation($"Getting users page {page} with page size {pageSize}, role filter: {role ?? "all"}");
+
+                // Build query
+                var query = _context.Users.AsNoTracking();
+                
+                // Apply role filter if specified
+                if (!string.IsNullOrEmpty(role))
+                {
+                    query = query.Where(u => u.Role == role);
+                }
 
                 // Get total count with minimal overhead
-                var totalCount = await _context.RegisteredUsers.CountAsync();
+                var totalCount = await query.CountAsync();
 
                 // Paginate and select only necessary fields to reduce data transfer
-                var users = await _context.RegisteredUsers
-                    .AsNoTracking() // Improves performance for read-only operations
-                    .OrderByDescending(u => u.RegUserId) // Order by ID for consistent paging
+                var users = await query
+                    .OrderByDescending(u => u.UserId)
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
                     .Select(u => new UserDTO
                     {
-                        RegUserId = u.RegUserId,
+                        UserId = u.UserId,
                         Username = u.Username,
                         Email = u.Email,
-                        Status = u.Status,
-                        JoinDate = (DateTime)u.JoinDate
+                        Role = u.Role,
+                        Status = u.Status ?? "active",
+                        JoinDate = u.JoinDate ?? DateTime.Now
                     })
                     .ToListAsync();
 
@@ -64,7 +73,7 @@ namespace APIWEB.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving registered users");
+                _logger.LogError(ex, "Error retrieving users");
                 return StatusCode(500, new { message = "Lỗi server khi tải danh sách người dùng." });
             }
         }
@@ -75,19 +84,20 @@ namespace APIWEB.Controllers
         {
             try
             {
-                _logger.LogInformation($"Getting registered user by ID: {id}");
+                _logger.LogInformation($"Getting user by ID: {id}");
 
                 // Use projection to limit data retrieved
-                var user = await _context.RegisteredUsers
+                var user = await _context.Users
                     .AsNoTracking()
-                    .Where(u => u.RegUserId == id)
+                    .Where(u => u.UserId == id)
                     .Select(u => new UserDTO
                     {
-                        RegUserId = u.RegUserId,
+                        UserId = u.UserId,
                         Username = u.Username,
                         Email = u.Email,
-                        Status = u.Status,
-                        JoinDate = (DateTime)u.JoinDate
+                        Role = u.Role,
+                        Status = u.Status ?? "active",
+                        JoinDate = u.JoinDate ?? DateTime.Now
                     })
                     .FirstOrDefaultAsync();
 
@@ -102,13 +112,13 @@ namespace APIWEB.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Error retrieving user with ID {id}");
-                return StatusCode(500, new { message = "Lỗi server khi tìm người dùng." });
+                return StatusCode(500, new { message = "Lỗi server khi tải thông tin người dùng." });
             }
         }
 
         // 🔹 Tìm kiếm người dùng theo tên
         [HttpGet("Search")]
-        public async Task<IActionResult> SearchByName([FromQuery] string name, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> SearchByName([FromQuery] string name, [FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? role = null)
         {
             try
             {
@@ -121,50 +131,42 @@ namespace APIWEB.Controllers
                 if (page < 1) page = 1;
                 if (pageSize < 1 || pageSize > 50) pageSize = 10;
 
-                _logger.LogInformation($"Searching users by name: {name}, page {page}, pageSize {pageSize}");
+                _logger.LogInformation($"Searching users with name containing '{name}', page {page}, pageSize {pageSize}, role: {role ?? "all"}");
 
-                // Create an optimized query
-                var query = _context.RegisteredUsers
-                    .AsNoTracking()
+                // Build query
+                var query = _context.Users.AsNoTracking()
                     .Where(u => u.Username.Contains(name));
+                
+                // Apply role filter if specified
+                if (!string.IsNullOrEmpty(role))
+                {
+                    query = query.Where(u => u.Role == role);
+                }
 
-                // Get total count first
+                // Get total count
                 var totalCount = await query.CountAsync();
 
-                // Then get paginated results
+                // Get paginated results
                 var users = await query
-                    .OrderByDescending(u => u.RegUserId)
+                    .OrderByDescending(u => u.UserId)
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
                     .Select(u => new UserDTO
                     {
-                        RegUserId = u.RegUserId,
+                        UserId = u.UserId,
                         Username = u.Username,
                         Email = u.Email,
-                        Status = u.Status,
-                        JoinDate = (DateTime)u.JoinDate
+                        Role = u.Role,
+                        Status = u.Status ?? "active",
+                        JoinDate = u.JoinDate ?? DateTime.Now
                     })
                     .ToListAsync();
 
                 // Calculate pagination metadata
                 var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
 
-                if (totalCount == 0)
-                {
-                    return Ok(new
-                    {
-                        message = "Không tìm thấy người dùng nào phù hợp.",
-                        totalCount = 0,
-                        totalPages = 0,
-                        currentPage = page,
-                        pageSize,
-                        users = new List<UserDTO>()
-                    });
-                }
-
                 return Ok(new
                 {
-                    message = $"Tìm thấy {totalCount} người dùng phù hợp.",
                     totalCount,
                     totalPages,
                     currentPage = page,
@@ -174,7 +176,7 @@ namespace APIWEB.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error searching users with name: {name}");
+                _logger.LogError(ex, $"Error searching users with name containing '{name}'");
                 return StatusCode(500, new { message = "Lỗi server khi tìm kiếm người dùng." });
             }
         }
@@ -185,108 +187,134 @@ namespace APIWEB.Controllers
         {
             try
             {
-                _logger.LogInformation($"Inserting new user: {createUserDTO.Username}, {createUserDTO.Email}");
+                _logger.LogInformation($"Creating new user: {createUserDTO.Username}, {createUserDTO.Email}, Role: {createUserDTO.Role}");
 
-                // Validate input
-                if (string.IsNullOrEmpty(createUserDTO.Username) ||
-                    string.IsNullOrEmpty(createUserDTO.Email) ||
-                    string.IsNullOrEmpty(createUserDTO.Password))
+                if (!ModelState.IsValid)
                 {
-                    return BadRequest(new { message = "Thông tin không được để trống." });
-                }
-
-                // Check if username already exists - use FirstOrDefaultAsync for efficiency
-                if (await _context.RegisteredUsers.AnyAsync(u => u.Username == createUserDTO.Username))
-                {
-                    return BadRequest(new { message = "Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác." });
-                }
-
-                // Check if email already exists
-                if (await _context.RegisteredUsers.AnyAsync(u => u.Email == createUserDTO.Email))
-                {
-                    return BadRequest(new { message = "Email đã được sử dụng. Vui lòng sử dụng email khác." });
+                    return BadRequest(ModelState);
                 }
 
                 // Validate email format
                 if (!IsValidEmail(createUserDTO.Email))
                 {
-                    return BadRequest(new { message = "Email không đúng định dạng." });
+                    return BadRequest(new { message = "Email không hợp lệ." });
                 }
 
-                // Validate password strength
-                if (createUserDTO.Password.Length < 6)
+                // Check if username or email already exists
+                var existingUser = await _context.Users
+                    .AnyAsync(u => u.Username == createUserDTO.Username || u.Email == createUserDTO.Email);
+
+                if (existingUser)
                 {
-                    return BadRequest(new { message = "Mật khẩu phải có ít nhất 6 ký tự." });
+                    return BadRequest(new { message = "Tên đăng nhập hoặc email đã tồn tại." });
                 }
 
-                var user = new RegisteredUser
+                // Validate role
+                if (!IsValidRole(createUserDTO.Role))
+                {
+                    return BadRequest(new { message = "Vai trò không hợp lệ. Vai trò phải là 'Admin', 'Moderator', hoặc 'User'." });
+                }
+
+                var user = new User
                 {
                     Username = createUserDTO.Username,
                     Email = createUserDTO.Email,
                     Password = createUserDTO.Password, // TODO: Mã hóa mật khẩu trước khi lưu
-                    Status = "Active", // Always set status to Active by default
+                    Role = createUserDTO.Role,
+                    Status = "active",
                     JoinDate = DateTime.Now
                 };
 
-                _context.RegisteredUsers.Add(user);
+                _context.Users.Add(user);
                 await _context.SaveChangesAsync();
-
-                var userDto = new UserDTO
-                {
-                    RegUserId = user.RegUserId,
-                    Username = user.Username,
-                    Email = user.Email,
-                    Status = user.Status,
-                    JoinDate = (DateTime)user.JoinDate
-                };
 
                 return Ok(new
                 {
-                    message = "Thêm người dùng thành công",
-                    user = userDto
+                    message = "Tạo người dùng thành công.",
+                    user = new UserDTO
+                    {
+                        UserId = user.UserId,
+                        Username = user.Username,
+                        Email = user.Email,
+                        Role = user.Role,
+                        Status = user.Status ?? "active",
+                        JoinDate = user.JoinDate ?? DateTime.Now
+                    }
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in user registration");
-                return StatusCode(500, new { message = "Lỗi server: " + ex.Message });
+                _logger.LogError(ex, "Error creating new user");
+                return StatusCode(500, new { message = "Lỗi server khi tạo người dùng mới." });
             }
         }
 
-        // 🔹 Cập nhật người dùng
+        // 🔹 Cập nhật thông tin người dùng
         [HttpPut("Update/{id}")]
         public async Task<IActionResult> Update(int id, [FromForm] UpdateUserDTO updateUserDTO)
         {
             try
             {
-                _logger.LogInformation($"Updating user ID: {id}");
+                _logger.LogInformation($"Updating user with ID: {id}");
 
-                // Find user with minimal data loading
-                var user = await _context.RegisteredUsers.FindAsync(id);
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
+
+                var user = await _context.Users.FindAsync(id);
                 if (user == null)
                 {
-                    _logger.LogWarning($"User with ID {id} not found during update");
+                    _logger.LogWarning($"Update failed: User with ID {id} not found");
                     return NotFound(new { message = "Không tìm thấy người dùng." });
                 }
 
-                // Check if username is being changed and already exists
-                if (user.Username != updateUserDTO.Username &&
-                    await _context.RegisteredUsers.AnyAsync(u => u.Username == updateUserDTO.Username))
+                // Check if username is being changed and if it already exists
+                if (updateUserDTO.Username != user.Username)
                 {
-                    return BadRequest(new { message = "Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác." });
+                    var existingUsername = await _context.Users
+                        .AnyAsync(u => u.Username == updateUserDTO.Username && u.UserId != id);
+
+                    if (existingUsername)
+                    {
+                        return BadRequest(new { message = "Tên đăng nhập đã tồn tại." });
+                    }
                 }
 
-                // Check if email is being changed and already exists
-                if (user.Email != updateUserDTO.Email &&
-                    await _context.RegisteredUsers.AnyAsync(u => u.Email == updateUserDTO.Email))
+                // Check if email is being changed and if it already exists
+                if (updateUserDTO.Email != user.Email)
                 {
-                    return BadRequest(new { message = "Email đã được sử dụng. Vui lòng sử dụng email khác." });
+                    // Validate email format
+                    if (!IsValidEmail(updateUserDTO.Email))
+                    {
+                        return BadRequest(new { message = "Email không hợp lệ." });
+                    }
+
+                    var existingEmail = await _context.Users
+                        .AnyAsync(u => u.Email == updateUserDTO.Email && u.UserId != id);
+
+                    if (existingEmail)
+                    {
+                        return BadRequest(new { message = "Email đã tồn tại." });
+                    }
                 }
 
-                // Validate email format
-                if (!IsValidEmail(updateUserDTO.Email))
+                // Validate role if it's being updated
+                if (!string.IsNullOrEmpty(updateUserDTO.Role) && updateUserDTO.Role != user.Role)
                 {
-                    return BadRequest(new { message = "Email không đúng định dạng." });
+                    if (!IsValidRole(updateUserDTO.Role))
+                    {
+                        return BadRequest(new { message = "Vai trò không hợp lệ. Vai trò phải là 'Admin', 'Moderator', hoặc 'User'." });
+                    }
+                }
+
+                // Validate status if it's being updated
+                if (!string.IsNullOrEmpty(updateUserDTO.Status) && updateUserDTO.Status != user.Status)
+                {
+                    if (!IsValidStatus(updateUserDTO.Status))
+                    {
+                        return BadRequest(new { message = "Trạng thái không hợp lệ. Trạng thái phải là 'active', 'inactive', hoặc 'Ban'." });
+                    }
                 }
 
                 // Update user properties
@@ -296,62 +324,41 @@ namespace APIWEB.Controllers
                 // Only update password if provided
                 if (!string.IsNullOrEmpty(updateUserDTO.Password))
                 {
-                    // Validate password strength
-                    if (updateUserDTO.Password.Length < 6)
-                    {
-                        return BadRequest(new { message = "Mật khẩu phải có ít nhất 6 ký tự." });
-                    }
-
-                    user.Password = updateUserDTO.Password; // TODO: Cân nhắc mã hóa mật khẩu
+                    user.Password = updateUserDTO.Password; // TODO: Mã hóa mật khẩu trước khi lưu
                 }
 
+                // Only update role if provided
+                if (!string.IsNullOrEmpty(updateUserDTO.Role))
+                {
+                    user.Role = updateUserDTO.Role;
+                }
+
+                // Only update status if provided
                 if (!string.IsNullOrEmpty(updateUserDTO.Status))
                 {
                     user.Status = updateUserDTO.Status;
                 }
 
-                // Use a timeout to prevent long-running transactions
-                using (var transaction = await _context.Database.BeginTransactionAsync())
-                {
-                    try
-                    {
-                        await _context.SaveChangesAsync();
-                        await transaction.CommitAsync();
-                    }
-                    catch
-                    {
-                        await transaction.RollbackAsync();
-                        throw;
-                    }
-                }
-
-                var userDto = new UserDTO
-                {
-                    RegUserId = user.RegUserId,
-                    Username = user.Username,
-                    Email = user.Email,
-                    Status = user.Status,
-                    JoinDate = (DateTime)user.JoinDate
-                };
+                await _context.SaveChangesAsync();
 
                 return Ok(new
                 {
-                    message = "Cập nhật người dùng thành công",
-                    user = userDto
+                    message = "Cập nhật người dùng thành công.",
+                    user = new UserDTO
+                    {
+                        UserId = user.UserId,
+                        Username = user.Username,
+                        Email = user.Email,
+                        Role = user.Role,
+                        Status = user.Status ?? "active",
+                        JoinDate = user.JoinDate ?? DateTime.Now
+                    }
                 });
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!await _context.RegisteredUsers.AnyAsync(u => u.RegUserId == id))
-                {
-                    return NotFound(new { message = "Không tìm thấy người dùng." });
-                }
-                return StatusCode(500, new { message = "Lỗi xung đột dữ liệu khi cập nhật người dùng." });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Error updating user with ID {id}");
-                return StatusCode(500, new { message = "Lỗi server khi cập nhật người dùng: " + ex.Message });
+                return StatusCode(500, new { message = "Lỗi server khi cập nhật thông tin người dùng." });
             }
         }
 
@@ -361,109 +368,84 @@ namespace APIWEB.Controllers
         {
             try
             {
-                _logger.LogInformation($"Deleting user ID: {id}");
+                _logger.LogInformation($"Deleting user with ID: {id}");
 
-                // Use a more efficient approach to find and delete
-                var user = await _context.RegisteredUsers.FindAsync(id);
+                var user = await _context.Users.FindAsync(id);
                 if (user == null)
                 {
-                    _logger.LogWarning($"User with ID {id} not found during delete");
+                    _logger.LogWarning($"Delete failed: User with ID {id} not found");
                     return NotFound(new { message = "Không tìm thấy người dùng." });
                 }
 
-                // Use a transaction with timeout to prevent long-running operations
-                using (var transaction = await _context.Database.BeginTransactionAsync())
-                {
-                    try
-                    {
-                        _context.RegisteredUsers.Remove(user);
-                        await _context.SaveChangesAsync();
-                        await transaction.CommitAsync();
-                    }
-                    catch
-                    {
-                        await transaction.RollbackAsync();
-                        throw;
-                    }
-                }
+                _context.Users.Remove(user);
+                await _context.SaveChangesAsync();
 
-                _logger.LogInformation($"User deleted successfully: {user.Username} (ID: {user.RegUserId})");
                 return Ok(new { message = "Xóa người dùng thành công." });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Error deleting user with ID {id}");
-                return StatusCode(500, new { message = "Lỗi server khi xóa người dùng: " + ex.Message });
+                return StatusCode(500, new { message = "Lỗi server khi xóa người dùng." });
             }
         }
 
-        // 🔹 Đăng nhập người dùng
+        // 🔹 Đăng nhập
         [HttpPost("Login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest loginRequest)
         {
             try
             {
-                _logger.LogInformation($"User login attempt with email: {loginRequest?.Email}");
+                _logger.LogInformation($"Login attempt with email: {loginRequest?.Email}");
 
-                if (loginRequest == null)
+                if (loginRequest == null || !ModelState.IsValid)
                 {
                     _logger.LogWarning("Login failed: Invalid login request");
-                    return BadRequest(new { message = "Invalid login request - request is null." });
+                    return BadRequest(new { message = "Email và mật khẩu không được để trống." });
                 }
 
-                // Kiểm tra xem có dữ liệu đầu vào không
-                if (string.IsNullOrEmpty(loginRequest.Email) || string.IsNullOrEmpty(loginRequest.Password))
-                {
-                    _logger.LogWarning("Login failed: email or password is empty");
-                    return BadRequest(new { message = "Email and password are required." });
-                }
-
-                // Use an optimized query that only selects needed fields
-                var user = await _context.RegisteredUsers
-                    .AsNoTracking()
-                    .Where(u => u.Email == loginRequest.Email)
-                    .Select(u => new {
-                        u.RegUserId,
-                        u.Username,
-                        u.Email,
-                        u.Password,
-                        u.Status
-                    })
-                    .FirstOrDefaultAsync();
+                var user = await _context.Users
+                    .FirstOrDefaultAsync(u => u.Email == loginRequest.Email);
 
                 if (user == null)
                 {
-                    _logger.LogWarning($"Login failed: no user found with email {loginRequest.Email}");
-                    return Unauthorized(new { message = "Invalid email or password." });
+                    _logger.LogWarning($"Login failed: Email not found: {loginRequest.Email}");
+                    return Unauthorized(new { message = "Email không tồn tại." });
                 }
 
-                // Kiểm tra mật khẩu
                 if (user.Password != loginRequest.Password)
                 {
-                    _logger.LogWarning($"Login failed: incorrect password for {loginRequest.Email}");
-                    return Unauthorized(new { message = "Invalid email or password." });
+                    _logger.LogWarning($"Login failed: Incorrect password for {loginRequest.Email}");
+                    return Unauthorized(new { message = "Mật khẩu không chính xác." });
                 }
 
-                _logger.LogInformation($"User login successful: {user.Username} (ID: {user.RegUserId})");
+                if (user.Status != "active")
+                {
+                    _logger.LogWarning($"Login failed: User account is not active: {loginRequest.Email}");
+                    return Unauthorized(new { message = "Tài khoản của bạn đã bị khóa hoặc bị cấm." });
+                }
 
                 return Ok(new
                 {
-                    message = "Login successful!",
-                    isAuthenticated = true,
-                    userId = user.RegUserId,
-                    username = user.Username,
-                    email = user.Email,
-                    role = "RegisteredUser"
+                    message = "Đăng nhập thành công.",
+                    user = new UserDTO
+                    {
+                        UserId = user.UserId,
+                        Username = user.Username,
+                        Email = user.Email,
+                        Role = user.Role,
+                        Status = user.Status ?? "active",
+                        JoinDate = user.JoinDate ?? DateTime.Now
+                    }
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in user login");
-                return StatusCode(500, new { message = "Server error: " + ex.Message });
+                _logger.LogError(ex, "Error during login");
+                return StatusCode(500, new { message = "Lỗi server khi đăng nhập." });
             }
         }
 
-        // Helper method to validate email format
+        // Helper methods
         private bool IsValidEmail(string email)
         {
             try
@@ -476,13 +458,25 @@ namespace APIWEB.Controllers
                 return false;
             }
         }
+
+        private bool IsValidRole(string role)
+        {
+            return role == "Admin" || role == "Moderator" || role == "User";
+        }
+
+        private bool IsValidStatus(string status)
+        {
+            return status == "active" || status == "inactive" || status == "Ban";
+        }
     }
 
+    // DTOs
     public class UserDTO
     {
-        public int RegUserId { get; set; }
+        public int UserId { get; set; }
         public string Username { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
+        public string Role { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
         public DateTime JoinDate { get; set; }
     }
@@ -493,12 +487,13 @@ namespace APIWEB.Controllers
         public string Username { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Email không được để trống")]
-        [EmailAddress(ErrorMessage = "Email không đúng định dạng")]
         public string Email { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Mật khẩu không được để trống")]
-        [MinLength(6, ErrorMessage = "Mật khẩu phải có ít nhất 6 ký tự")]
         public string Password { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Vai trò không được để trống")]
+        public string Role { get; set; } = "User";
     }
 
     public class UpdateUserDTO
@@ -507,10 +502,11 @@ namespace APIWEB.Controllers
         public string Username { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Email không được để trống")]
-        [EmailAddress(ErrorMessage = "Email không đúng định dạng")]
         public string Email { get; set; } = string.Empty;
 
         public string? Password { get; set; }
+
+        public string? Role { get; set; }
 
         public string? Status { get; set; }
     }

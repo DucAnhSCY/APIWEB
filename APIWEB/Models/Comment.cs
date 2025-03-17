@@ -16,8 +16,8 @@ public partial class Comment
     [Column("post_id")]
     public int PostId { get; set; }
 
-    [Column("RegUser_id")]
-    public int? RegUserId { get; set; }
+    [Column("UserId")]
+    public int UserId { get; set; }
 
     [Column("content", TypeName = "text")]
     public string Content { get; set; } = null!;
@@ -29,7 +29,7 @@ public partial class Comment
     [InverseProperty("Comments")]
     public virtual Post Post { get; set; } = null!;
 
-    [ForeignKey("RegUserId")]
+    [ForeignKey("UserId")]
     [InverseProperty("Comments")]
-    public virtual RegisteredUser? RegUser { get; set; }
+    public virtual User User { get; set; } = null!;
 }

@@ -25,26 +25,19 @@ public partial class Thread
     public DateTime? CreatedAt { get; set; }
 
     [Column("category_ID")]
-    public int? CategoryId { get; set; }
+    public int CategoryId { get; set; }
 
-    [Column("RegUser_id")]
-    public int? RegUserId { get; set; }
-
-    [Column("Mod_id")]
-    public int? ModId { get; set; }
+    [Column("UserId")]
+    public int UserId { get; set; }
 
     [ForeignKey("CategoryId")]
     [InverseProperty("Threads")]
-    public virtual Category? Category { get; set; }
-
-    [ForeignKey("ModId")]
-    [InverseProperty("Threads")]
-    public virtual Moderator? Mod { get; set; }
+    public virtual Category Category { get; set; } = null!;
 
     [InverseProperty("Thread")]
     public virtual ICollection<Post> Posts { get; set; } = new List<Post>();
 
-    [ForeignKey("RegUserId")]
+    [ForeignKey("UserId")]
     [InverseProperty("Threads")]
-    public virtual RegisteredUser? RegUser { get; set; }
+    public virtual User User { get; set; } = null!;
 }

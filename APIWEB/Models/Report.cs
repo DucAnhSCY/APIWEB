@@ -16,11 +16,8 @@ public partial class Report
     [Column("post_id")]
     public int PostId { get; set; }
 
-    [Column("RegUser_id")]
-    public int? RegUserId { get; set; }
-
-    [Column("Mod_id")]
-    public int? ModId { get; set; }
+    [Column("UserId")]
+    public int UserId { get; set; }
 
     [Column("reason", TypeName = "text")]
     public string Reason { get; set; } = null!;
@@ -33,15 +30,11 @@ public partial class Report
     [Column("createdAt", TypeName = "datetime")]
     public DateTime? CreatedAt { get; set; }
 
-    [ForeignKey("ModId")]
-    [InverseProperty("Reports")]
-    public virtual Moderator? Mod { get; set; }
-
     [ForeignKey("PostId")]
     [InverseProperty("Reports")]
     public virtual Post Post { get; set; } = null!;
 
-    [ForeignKey("RegUserId")]
+    [ForeignKey("UserId")]
     [InverseProperty("Reports")]
-    public virtual RegisteredUser? RegUser { get; set; }
+    public virtual User User { get; set; } = null!;
 }

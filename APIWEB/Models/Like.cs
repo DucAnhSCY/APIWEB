@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace APIWEB.Models;
 
+[Table("Likes")]
 public partial class Like
 {
     [Key]
@@ -15,14 +16,14 @@ public partial class Like
     [Column("post_id")]
     public int PostId { get; set; }
 
-    [Column("RegUser_id")]
-    public int RegUserId { get; set; }
+    [Column("UserId")]
+    public int UserId { get; set; }
 
     [ForeignKey("PostId")]
     [InverseProperty("Likes")]
     public virtual Post Post { get; set; } = null!;
 
-    [ForeignKey("RegUserId")]
+    [ForeignKey("UserId")]
     [InverseProperty("Likes")]
-    public virtual RegisteredUser RegUser { get; set; } = null!;
+    public virtual User User { get; set; } = null!;
 }

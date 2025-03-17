@@ -7,7 +7,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace APIWEB.Models;
 
-[Index("Name", Name = "UQ__Categori__72E12F1BAC242E55", IsUnique = true)]
+[Table("Categories")]
+[Index("Name", Name = "UQ__Categori__72E12F1B", IsUnique = true)]
 public partial class Category
 {
     [Key]

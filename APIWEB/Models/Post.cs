@@ -16,11 +16,8 @@ public partial class Post
     [Column("thread_id")]
     public int ThreadId { get; set; }
 
-    [Column("RegUser_id")]
-    public int? RegUserId { get; set; }
-
-    [Column("Mod_id")]
-    public int? ModId { get; set; }
+    [Column("UserId")]
+    public int? UserId { get; set; }
 
     [Column("content", TypeName = "text")]
     public string Content { get; set; } = null!;
@@ -34,13 +31,9 @@ public partial class Post
     [InverseProperty("Post")]
     public virtual ICollection<Like> Likes { get; set; } = new List<Like>();
 
-    [ForeignKey("ModId")]
+    [ForeignKey("UserId")]
     [InverseProperty("Posts")]
-    public virtual Moderator? Mod { get; set; }
-
-    [ForeignKey("RegUserId")]
-    [InverseProperty("Posts")]
-    public virtual RegisteredUser? RegUser { get; set; }
+    public virtual User? User { get; set; }
 
     [InverseProperty("Post")]
     public virtual ICollection<Report> Reports { get; set; } = new List<Report>();
