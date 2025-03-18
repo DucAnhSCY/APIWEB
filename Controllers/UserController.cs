@@ -9,8 +9,6 @@ using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using diendan2.Models2;
 using Microsoft.AspNetCore.Identity.Data;
-using Azure.Core;
-using diendan2.Models2;
 
 namespace diendan.Controllers
 {

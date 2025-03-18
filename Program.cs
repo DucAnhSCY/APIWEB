@@ -91,7 +91,7 @@ using (var scope = app.Services.CreateScope())
         {
             Username = "admin",
             Email = "admin@gmail.com",
-            Password = BCrypt.Net.BCrypt.HashPassword("123"), // Change this to a strong password
+            Password = BCrypt.Net.BCrypt.HashPassword("1"), // Change this to a strong password
             Role = "Admin",
             Status = "active",
             JoinDate = DateTime.UtcNow
