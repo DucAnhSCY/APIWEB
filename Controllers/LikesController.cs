@@ -128,6 +128,23 @@ public class LikesController : ControllerBase
 
         return Ok(likes);
     }
+
+    // Get like count for a post
+    [HttpGet("Count/{postId}")]
+    public async Task<ActionResult<int>> GetLikeCount(int postId)
+    {
+        var post = await _context.Posts.FindAsync(postId);
+        if (post == null)
+        {
+            return NotFound(new { message = "Post not found." });
+        }
+
+        var likeCount = await _context.Likes
+            .Where(l => l.PostId == postId)
+            .CountAsync();
+
+        return Ok(likeCount);
+    }
 }
 
 // DTOs
