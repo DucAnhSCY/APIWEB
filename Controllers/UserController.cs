@@ -101,6 +101,7 @@ namespace diendan.Controllers
             return Ok(new { token = tokenString });
         }
 
+
         // ✅ GET all users (Admin only)
         [HttpGet("GetAll")]
         public IActionResult GetAllUsers()
@@ -137,28 +138,36 @@ namespace diendan.Controllers
         }
 
         // ✅ UPDATE user role (Admin only)
-        [HttpPut("UpdateRole/{id}")]
-        public IActionResult UpdateRole(int id, [FromBody] UpdateRoleDTO model)
+        [HttpPut("UpdateUser/{id}")]
+        public IActionResult UpdateUser(int id, [FromBody] UpdateUserDTO model)
         {
             var user = _context.Users.Find(id);
             if (user == null)
                 return NotFound("User not found.");
 
-            // Validate role
-            if (string.IsNullOrEmpty(model.Role))
-                return BadRequest("Role cannot be empty.");
+            // Update fields if provided
+            if (!string.IsNullOrEmpty(model.Role))
+            {
+                var allowedRoles = new[] { "User", "Admin", "Moderator" };
+                if (!allowedRoles.Contains(model.Role))
+                    return BadRequest("Invalid role. Allowed roles: User, Admin, Moderator.");
 
-            // Only allow specific roles to be assigned
-            var allowedRoles = new[] { "User", "Admin", "Moderator" };
-            if (!allowedRoles.Contains(model.Role))
-                return BadRequest("Invalid role. Allowed roles are: User, Admin, Moderator.");
+                user.Role = model.Role;
+            }
 
-            // Update role
-            user.Role = model.Role;
+            if (!string.IsNullOrEmpty(model.Status))
+            {
+                var allowedStatuses = new[] { "Active", "Inactive", "Ban" };
+                if (!allowedStatuses.Contains(model.Status))
+                    return BadRequest("Invalid status. Allowed statuses: Active, Inactive, Ban.");
+
+                user.Status = model.Status;
+            }
+
             _context.SaveChanges();
-
-            return Ok(new { message = "User role updated successfully", user = new { user.UserId, user.Username, user.Role } });
+            return Ok(new { message = "User updated successfully", user = new { user.UserId, user.Username, user.Role, user.Status } });
         }
+
 
         // ✅ UPDATE user status (Admin only)
         [HttpPut("UpdateStatus/{id}")]
@@ -219,7 +228,7 @@ namespace diendan.Controllers
                 signingCredentials: credentials
             );
 
-            return new JwtSecurityTokenHandler().WriteToken(token);
+            return new JwtSecurityTokenHandler().WriteToken(token); 
         }
 
         // ✅ Hash Password using Bcrypt
