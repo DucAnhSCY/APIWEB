@@ -54,14 +54,21 @@ namespace diendan.Controllers
         public IActionResult Login([FromBody] LoginRequest request)
         {
             var user = _context.Users.FirstOrDefault(u => u.Email == request.Email);
+
             if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.Password))
             {
                 return BadRequest("Invalid email or password");
             }
 
+            if (user.Status.ToLower() == "ban")
+            {
+                return BadRequest("Your account has been banned. Please contact support.");
+            }
+
             var token = GenerateJwtToken(user);
             return Ok(new { token, user = new { user.Username, user.Role } });
         }
+
 
         // ✅ GET all users (Admin only)
         [HttpGet("GetAll")]
