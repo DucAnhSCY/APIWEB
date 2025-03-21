@@ -40,7 +40,7 @@ namespace diendan.Controllers
                 Email = model.Email,
                 Password = BCrypt.Net.BCrypt.HashPassword(model.Password),
                 Role = "User", // Default role is "User"
-                Status = "active",
+                Status = "Active", // Đảm bảo trạng thái mặc định là Active khi đăng ký
                 JoinDate = DateTime.UtcNow
             };
 
@@ -51,16 +51,54 @@ namespace diendan.Controllers
 
         // ✅ LOGIN and get JWT Token
         [HttpPost("Login")]
-        public IActionResult Login([FromBody] LoginRequest request)
+        public async Task<IActionResult> Login([FromBody] LoginDTO model)
         {
-            var user = _context.Users.FirstOrDefault(u => u.Email == request.Email);
-            if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.Password))
+            if (!ModelState.IsValid)
             {
-                return BadRequest("Invalid email or password");
+                return BadRequest(new { code = "invalid_model", message = "Invalid model state." });
             }
 
-            var token = GenerateJwtToken(user);
-            return Ok(new { token, user = new { user.Username, user.Role } });
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.Email == model.Email);
+
+            if (user == null || !BCrypt.Net.BCrypt.Verify(model.Password, user.Password))
+            {
+                return BadRequest(new { code = "invalid_credentials", message = "Invalid email or password." });
+            }
+
+            // Check account status
+            if (user.Status == "Inactive")
+            {
+                return BadRequest(new { code = "account_inactive", message = "Your account is inactive. Please contact an administrator." });
+            }
+            
+            if (user.Status == "Ban")
+            {
+                return BadRequest(new { code = "account_banned", message = "Your account has been banned. Please contact an administrator for more information." });
+            }
+
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
+                new Claim(ClaimTypes.Name, user.Username),
+                new Claim(ClaimTypes.Role, user.Role),
+                new Claim("status", user.Status) 
+            };
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var token = new JwtSecurityToken(
+                issuer: _config["Jwt:Issuer"],
+                audience: _config["Jwt:Audience"],
+                claims: claims,
+                expires: DateTime.Now.AddDays(7), // Token expires after 7 days
+                signingCredentials: creds
+            );
+
+            var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
+
+            return Ok(new { token = tokenString });
         }
 
         // ✅ GET all users (Admin only)
@@ -122,6 +160,30 @@ namespace diendan.Controllers
             return Ok(new { message = "User role updated successfully", user = new { user.UserId, user.Username, user.Role } });
         }
 
+        // ✅ UPDATE user status (Admin only)
+        [HttpPut("UpdateStatus/{id}")]
+        public IActionResult UpdateStatus(int id, [FromBody] UpdateStatusDTO model)
+        {
+            var user = _context.Users.Find(id);
+            if (user == null)
+                return NotFound("User not found.");
+
+            // Validate status
+            if (string.IsNullOrEmpty(model.Status))
+                return BadRequest("Status cannot be empty.");
+
+            // Only allow specific status values
+            var allowedStatuses = new[] { "Active", "Inactive", "Ban" };
+            if (!allowedStatuses.Contains(model.Status))
+                return BadRequest("Invalid status. Allowed statuses are: Active, Inactive, Ban.");
+
+            // Update status
+            user.Status = model.Status;
+            _context.SaveChanges();
+
+            return Ok(new { message = "User status updated successfully", user = new { user.UserId, user.Username, user.Status } });
+        }
+
         // ✅ DELETE user (Admin only)
         [HttpDelete("Delete/{id}")]
         public IActionResult DeleteUser(int id)
@@ -163,17 +225,13 @@ namespace diendan.Controllers
         // ✅ Hash Password using Bcrypt
         private string HashPassword(string password)
         {
-            using (var sha256 = SHA256.Create())
-            {
-                byte[] bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
-                return Convert.ToBase64String(bytes);
-            }
+            return BCrypt.Net.BCrypt.HashPassword(password);
         }
 
         // ✅ Verify Password
         private bool VerifyPassword(string enteredPassword, string storedHash)
         {
-            return HashPassword(enteredPassword) == storedHash;
+            return BCrypt.Net.BCrypt.Verify(enteredPassword, storedHash);
         }
     }
 }
