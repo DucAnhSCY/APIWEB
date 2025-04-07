@@ -107,6 +107,7 @@ namespace diendan2.Controllers
                 return BadRequest(new { message = "Invalid Post ID." });
             }
 
+            // HTML content is allowed now and will be sanitized client-side
             var comment = new Comment
             {
                 Content = commentDto.Content,
@@ -124,7 +125,8 @@ namespace diendan2.Controllers
                 Content = comment.Content,
                 CreatedAt = comment.CreatedAt ?? DateTime.MinValue,
                 PostId = comment.PostId,
-                Username = user.Username
+                Username = user.Username,
+                UserId = user.UserId
             };
 
             return CreatedAtAction(nameof(GetCommentById), new { id = comment.CommentId }, commentDTO);
@@ -140,6 +142,7 @@ namespace diendan2.Controllers
                 return NotFound(new { message = "Comment not found." });
             }
 
+            // HTML content is allowed now and will be sanitized client-side
             comment.Content = dto.Content;
             comment.CreatedAt = DateTime.UtcNow;
 

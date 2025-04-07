@@ -15,6 +15,7 @@ using Microsoft.Extensions.FileProviders;
 using System.IO;
 using System;
 using System.Linq;
+using diendan2.Services;
 
 namespace diendan2
 {
@@ -62,6 +63,9 @@ namespace diendan2
 
             // ✅ Add Authorization
             builder.Services.AddAuthorization();
+
+            // ✅ Register services
+            builder.Services.AddScoped<SpacesService>();
 
             // ✅ Add Controllers
             builder.Services.AddControllers();
@@ -129,6 +133,12 @@ namespace diendan2
             // ✅ Enable CORS (NO RESTRICTIONS)
             app.UseCors("AllowAll");
 
+            // ✅ Enable HTTPS Redirection to fix mixed content issues
+            app.UseHttpsRedirection();
+            
+            // ✅ Use HSTS for better security
+            app.UseHsts();
+
             // ✅ Enable Authentication & Authorization
             app.UseAuthentication();
             app.UseAuthorization();
@@ -154,6 +164,10 @@ namespace diendan2
 
             // ✅ Map Default Route
             app.MapFallbackToFile("index.html");
+
+            // Configure Kestrel to listen on both HTTP and HTTPS
+            app.Urls.Add("http://*:80");
+            app.Urls.Add("https://*:443");
 
             app.Run();
         }

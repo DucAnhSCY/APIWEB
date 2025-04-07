@@ -1,9 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Hosting;
 using System;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using diendan2.Services;
 
 namespace diendan2.Controllers
 {
@@ -12,10 +13,12 @@ namespace diendan2.Controllers
     public class UploadController : ControllerBase
     {
         private readonly IWebHostEnvironment _environment;
+        private readonly SpacesService _spacesService;
 
-        public UploadController(IWebHostEnvironment environment)
+        public UploadController(IWebHostEnvironment environment, SpacesService spacesService)
         {
             _environment = environment;
+            _spacesService = spacesService;
         }
 
         [HttpPost("Image")]
@@ -53,6 +56,42 @@ namespace diendan2.Controllers
 
                 // Generate URL for the saved image
                 string url = $"{Request.Scheme}://{Request.Host}/uploads/{uniqueFileName}";
+
+                // Return response in format expected by CKEditor
+                return Ok(new
+                {
+                    uploaded = 1,
+                    fileName = uniqueFileName,
+                    url
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { uploaded = 0, error = new { message = $"Error uploading file: {ex.Message}" } });
+            }
+        }
+
+        [HttpPost("ImageSpaces")]
+        public async Task<IActionResult> UploadImageToSpaces(IFormFile upload)
+        {
+            if (upload == null || upload.Length == 0)
+            {
+                return BadRequest(new { uploaded = 0, error = new { message = "No file uploaded." } });
+            }
+
+            try
+            {
+                // Check if file is an image
+                if (!IsImageFile(upload.FileName))
+                {
+                    return BadRequest(new { uploaded = 0, error = new { message = "Invalid file type. Only image files are allowed." } });
+                }
+
+                // Generate a unique file name
+                string uniqueFileName = $"{Guid.NewGuid()}_{Path.GetFileName(upload.FileName)}";
+                
+                // Upload to DigitalOcean Spaces
+                string url = await _spacesService.UploadFileAsync(upload, uniqueFileName);
 
                 // Return response in format expected by CKEditor
                 return Ok(new
