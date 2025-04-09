@@ -37,6 +37,37 @@ public class ThreadController : ControllerBase
         return Ok(threads);
     }
 
+    // Get threads by category ID
+    [HttpGet("ByCategory/{categoryId}")]
+    public async Task<ActionResult<IEnumerable<ThreadDTO>>> GetThreadsByCategory(int categoryId)
+    {
+        // Check if category exists
+        var category = await _context.Categories.FindAsync(categoryId);
+        if (category == null)
+        {
+            return NotFound(new { message = "Category not found" });
+        }
+
+        var threads = await _context.Threads
+            .Include(t => t.Category)
+            .Include(t => t.User)
+            .Where(t => t.CategoryId == categoryId)
+            .Select(t => new ThreadDTO
+            {
+                ThreadId = t.ThreadId,
+                Title = t.Title,
+                Content = t.Content,
+                CreatedAt = t.CreatedAt ?? DateTime.MinValue,
+                CategoryId = t.CategoryId,
+                UserId = t.UserId,
+                CategoryName = t.Category.Name,
+                Username = t.User.Username
+            })
+            .ToListAsync();
+
+        return Ok(threads);
+    }
+
     [HttpGet("{id}")]
     public async Task<ActionResult<ThreadDTO>> GetThreadById(int id)
     {
