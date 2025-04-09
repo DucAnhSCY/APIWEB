@@ -177,9 +177,6 @@ namespace diendan2
 
             // ✅ Map Default Route
             app.MapFallbackToFile("index.html");
-            // Configure Kestrel to listen on port 
-            app.Urls.Add("http://*:5000");
-            app.Urls.Add("https://*:5001");
             app.Run();
         }
     }
