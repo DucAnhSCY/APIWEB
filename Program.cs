@@ -1,4 +1,5 @@
-using diendan;
+using Amazon.S3;
+using Amazon.S3.Transfer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
@@ -15,8 +16,6 @@ using Microsoft.Extensions.FileProviders;
 using System.IO;
 using System;
 using System.Linq;
-using Amazon.S3;
-using static diendan2.Services.DigitalOceanSpacesService;
 
 namespace diendan2
 {
@@ -35,9 +34,9 @@ namespace diendan2
             var s3Config = new AmazonS3Config
             {
                 ServiceURL = endpoint,
-                ForcePathStyle = false,
-                UseHttp = true,
-                RegionEndpoint = Amazon.RegionEndpoint.GetBySystemName("us-east-1")
+                ForcePathStyle = true, // Ensure this is set to true for DigitalOcean Spaces
+                UseHttp = false,
+                RegionEndpoint = Amazon.RegionEndpoint.USEast1 // Update to your region
             };
 
             builder.Services.AddSingleton<IAmazonS3>(new AmazonS3Client(accessKey, secretKey, s3Config));
