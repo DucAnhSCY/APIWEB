@@ -2,11 +2,10 @@
 pipeline {
     agent any
     
-    stages {
-        stage('clone'){
+    stages {        stage('clone'){
             steps {
                 echo 'Cloning source code'
-                git branch:'main', url: 'https://github.com/DucAnhSCY/APIWEB.git'
+                git branch:'master', url: 'https://github.com/DucAnhSCY/APIWEB.git'
             }
         } // end clone
 
