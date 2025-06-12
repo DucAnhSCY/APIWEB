@@ -6,7 +6,7 @@ stages {
 	stage('clone'){
 		steps {
 			echo 'Cloning source code'
-			git branch:'main', url: 'https://github.com/DucAnhSCY/ForumPC.git'
+			git branch:'main', url: 'https://github.com/DucAnhSCY/APIWEB.git'
 		}
 	} // end clone
 
