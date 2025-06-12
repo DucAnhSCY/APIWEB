@@ -361,3 +361,9 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+gitignore
+Sao chépChỉnh sửa
+/bin/
+# Ignore the bin directory, which is where compiled binaries are placed.
+obj/
