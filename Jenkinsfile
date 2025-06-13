@@ -1,13 +1,13 @@
-
 pipeline {
     agent any
     
-    stages {        stage('clone'){
+    stages {
+        stage('clone'){
             steps {
                 echo 'Cloning source code'
                 git branch:'master', url: 'https://github.com/DucAnhSCY/APIWEB.git'
             }
-        } // end clone
+        }
 
         stage('restore package') {
             steps {
@@ -40,21 +40,35 @@ pipeline {
         stage ('Copy to IIS folder') {
             steps {
                 echo 'Copy to running folder'
-                // iisreset /stop // stop iis de ghi de file 
-                bat 'xcopy "%WORKSPACE%\\publish\\*" "c:\\wwwroot\\myproject\\" /E /Y /I /R'
+                powershell '''
+                    # Stop IIS site
+                    Import-Module WebAdministration
+                    if (Get-Website -Name "MySite" -ErrorAction SilentlyContinue) {
+                        Stop-Website -Name "MySite"
+                        Start-Sleep -Seconds 3
+                    }
+                    
+                    # Copy files
+                    Copy-Item -Path "$env:WORKSPACE\\publish\\*" -Destination "c:\\wwwroot\\myproject\\" -Recurse -Force
+                    
+                    # Start IIS site
+                    if (Get-Website -Name "MySite" -ErrorAction SilentlyContinue) {
+                        Start-Website -Name "MySite"
+                    }
+                '''
             }
         }
         
         stage('Deploy to IIS') {
             steps {
                 powershell '''
-                    # Tạo website nếu chưa có
+                    # Create website if it doesn't exist
                     Import-Module WebAdministration
                     if (-not (Get-Website -Name "MySite" -ErrorAction SilentlyContinue)) {
                         New-Website -Name "MySite" -Port 81 -PhysicalPath "c:\\wwwroot\\myproject"
                     }
                 '''
             }
-        } // end deploy iis
-    } // end stages
-} // end pipeline
+        }
+    }
+}
