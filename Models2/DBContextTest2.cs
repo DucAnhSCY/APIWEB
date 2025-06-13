@@ -32,7 +32,7 @@ public partial class DBContextTest2 : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Data Source = cmcsv.ric.vn, 10000; Initial Catalog = N10_NHOM6; Persist Security Info=True;User ID = cmcsv; Password=cM!@#2025;Encrypt=False");
+        => optionsBuilder.UseSqlServer("Data Source = DUCANHLAPTOP; Initial Catalog = diendan; Persist Security Info=True;User ID = sa; Password=2005;Encrypt=False");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
