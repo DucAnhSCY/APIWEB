@@ -50,7 +50,9 @@ namespace diendan2
                             maxRetryCount: 5,
                             maxRetryDelay: TimeSpan.FromSeconds(30),
                             errorNumbersToAdd: null);
-                    }));            // ✅ Enable CORS (Cross-Origin Resource Sharing)
+                    }));
+
+            // ✅ Enable CORS (Cross-Origin Resource Sharing)
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowAll", policy =>
