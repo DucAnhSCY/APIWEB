@@ -50,13 +50,18 @@ namespace diendan2
                             maxRetryCount: 5,
                             maxRetryDelay: TimeSpan.FromSeconds(30),
                             errorNumbersToAdd: null);
-                    }));
-
-            // ✅ Enable CORS (Cross-Origin Resource Sharing)
+                    }));            // ✅ Enable CORS (Cross-Origin Resource Sharing)
             builder.Services.AddCors(options =>
-            {
-                options.AddPolicy("AllowAll",
-                    policy => policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+            {                options.AddPolicy("AllowAll", policy =>
+                {
+                    policy.WithOrigins(
+                        "http://127.0.0.1:5502", "http://localhost:5502", 
+                        "http://127.0.0.1:5500", "http://localhost:5500",
+                        "http://127.0.0.1:81", "http://localhost:81")
+                          .AllowAnyMethod()
+                          .AllowAnyHeader()
+                          .AllowCredentials();
+                });
             });
 
             // ✅ Add Authentication (JWT)
@@ -139,16 +144,14 @@ namespace diendan2
                     context.Users.Add(admin);
                     context.SaveChanges();
                 }
-            }
-
-            // ✅ Enable Swagger UI in Development
+            }            // ✅ Enable Swagger UI in Development
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
 
-            // ✅ Enable CORS (NO RESTRICTIONS)
+            // ✅ Enable CORS (MUST BE BEFORE Authentication)
             app.UseCors("AllowAll");
 
             // ✅ Enable Authentication & Authorization
