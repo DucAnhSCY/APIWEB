@@ -122,7 +122,11 @@ namespace diendan2
 
             // ✅ Enable CORS first (MUST BE BEFORE everything else)
             app.UseCors("AllowAll");
-
+            app.MapControllers().RequireCors("AllowAll");
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapControllers().RequireCors("AllowAll");
+            });
             // ✅ Automatically create an Admin if none exists
             using (var scope = app.Services.CreateScope())
             {
